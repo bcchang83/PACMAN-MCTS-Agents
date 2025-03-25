@@ -24,7 +24,7 @@ from util import nearestPoint
 #################
 
 def createTeam(firstIndex, secondIndex, isRed,
-               first = 'MyOffensiveAgent', second = 'MyDefensiveAgent'):
+               first = 'MyOffensiveAgent', second = 'MyDefensiveAgent', **kwargs):
   """
   This function should return a list of two agents that will form the
   team, initialized using firstIndex and secondIndex as their agent
@@ -41,11 +41,11 @@ def createTeam(firstIndex, secondIndex, isRed,
   """
 
   # The following line is an example only; feel free to change it.
-  return [eval(first)(firstIndex), eval(second)(secondIndex)]
+  return [eval(first)(firstIndex, **kwargs), eval(second)(secondIndex, **kwargs)]
 
 class MCTS_Node():
   
-  def __init__(self, index, state, parent = None, parent_action = None):
+  def __init__(self, index, state, exploration_factor = 1.414, parent = None, parent_action = None):
     self.index = index
     self.state = state
     self.parent = parent
@@ -53,6 +53,9 @@ class MCTS_Node():
     self.children={}
     self.visits = 0
     self.value = 0
+    
+    self.exploration_factor = exploration_factor
+    
     self.rewards = []
     
   def is_fully_expanded(self):
@@ -70,7 +73,7 @@ class MCTS_Node():
     else:
       variance = 0
       
-    exploration = 1.414 * math.sqrt(math.log(self.parent.visits) / self.visits * min(0.25, variance + 2 * math.log(self.parent.visits/self.visits)))
+    exploration = self.exploration_factor * math.sqrt(math.log(self.parent.visits) / self.visits * min(0.25, variance + 2 * math.log(self.parent.visits/self.visits)))
     # print(f"UCT: exploitation={exploitation}, exploration={exploration}")
     return exploitation + exploration
 
@@ -84,6 +87,13 @@ class MCTSAgent(CaptureAgent):
   You should look at baselineTeam.py for more details about how to
   create an agent as this is the bare minimum.
   """
+  def __init__(self, index, **kwargs):
+      super().__init__(index)
+      self.iterations = int(kwargs.get("iterations", 50))
+      self.max_depth = int(kwargs.get("depth", 10))
+      self.exploration_factor = float(kwargs.get("exploration", 1.0))
+        
+      print(f"Agent {self.index}: iterations={self.iterations}, depth={self.max_depth}, exploration={self.exploration_factor}")
   
   def registerInitialState(self, gameState):
     """
@@ -111,7 +121,7 @@ class MCTSAgent(CaptureAgent):
     Your initialization code goes here, if you need any.
     '''
     
-  def chooseAction(self, gameState, iterations=100, max_depth=10):
+  def chooseAction(self, gameState):
     """
     Picks among actions randomly.
     """
@@ -119,11 +129,11 @@ class MCTSAgent(CaptureAgent):
     '''
     You should change this in your own agent.
     '''
-    root = MCTS_Node(self.index, gameState)
+    root = MCTS_Node(self.index, gameState, exploration_factor=self.exploration_factor)
     
-    for _ in range(iterations):
+    for _ in range(self.iterations):
         node = self.selection(root)
-        reward = self.simulation(node.state, max_depth)
+        reward = self.simulation(node.state, self.max_depth)
         self.backpropagation(node, reward)
 
     children_ucb1_tuned = [child.ucb1_tuned() for _, child in root.children.items()]
@@ -145,7 +155,7 @@ class MCTSAgent(CaptureAgent):
     if untried_actions:
         action = random.choice(untried_actions)
         child_state = node.state.generateSuccessor(self.index, action)
-        child_node = MCTS_Node(self.index, child_state, parent=node, parent_action=action)
+        child_node = MCTS_Node(self.index, child_state, parent=node, parent_action=action, exploration_factor=self.exploration_factor)
         node.children[action] = child_node
         return child_node
 

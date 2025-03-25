@@ -24,7 +24,7 @@ from util import nearestPoint
 #################
 
 def createTeam(firstIndex, secondIndex, isRed,
-               first = 'MyOffensiveAgent', second = 'MyDefensiveAgent'):
+               first = 'MyOffensiveAgent', second = 'MyDefensiveAgent', **kwargs):
   """
   This function should return a list of two agents that will form the
   team, initialized using firstIndex and secondIndex as their agent
@@ -39,13 +39,13 @@ def createTeam(firstIndex, secondIndex, isRed,
   any extra arguments, so you should make sure that the default
   behavior is what you want for the nightly contest.
   """
-
+  # print(f"Check additional inputs:{kwargs}")
   # The following line is an example only; feel free to change it.
-  return [eval(first)(firstIndex), eval(second)(secondIndex)]
+  return [eval(first)(firstIndex, **kwargs), eval(second)(secondIndex, **kwargs)]
 
 class MCTS_Node():
   
-  def __init__(self, index, state, parent = None, parent_action = None):
+  def __init__(self, index, state, exploration_factor = 1.414, parent = None, parent_action = None):
     self.index = index
     self.state = state
     self.parent = parent
@@ -53,6 +53,8 @@ class MCTS_Node():
     self.children={}
     self.visits = 0
     self.value = 0
+    
+    self.exploration_factor = exploration_factor
     
   def is_fully_expanded(self):
     return len(self.children) == len(self.state.getLegalActions(self.index))
@@ -64,7 +66,7 @@ class MCTS_Node():
     if self.visits == 0:
         return float('inf')
     exploitation = self.value / self.visits
-    exploration = 1.414 * math.sqrt(math.log(self.parent.visits) / self.visits)
+    exploration = self.exploration_factor * math.sqrt(math.log(self.parent.visits) / self.visits)
     # print(f"UCT: exploitation={exploitation}, exploration={exploration}")
     return exploitation + exploration
 
@@ -78,7 +80,14 @@ class MCTSAgent(CaptureAgent):
   You should look at baselineTeam.py for more details about how to
   create an agent as this is the bare minimum.
   """
-  
+  def __init__(self, index, **kwargs):
+      super().__init__(index)
+      self.iterations = int(kwargs.get("iterations", 50))
+      self.max_depth = int(kwargs.get("depth", 10))
+      self.exploration_factor = float(kwargs.get("exploration", 1.0))
+        
+      print(f"Agent {self.index}: iterations={self.iterations}, depth={self.max_depth}, exploration={self.exploration_factor}")
+      
   def registerInitialState(self, gameState):
     """
     This method handles the initial setup of the
@@ -113,7 +122,7 @@ class MCTSAgent(CaptureAgent):
     '''
     You should change this in your own agent.
     '''
-    root = MCTS_Node(self.index, gameState)
+    root = MCTS_Node(self.index, gameState, exploration_factor=self.exploration_factor)
     
     for _ in range(iterations):
         node = self.selection(root)
@@ -122,6 +131,12 @@ class MCTSAgent(CaptureAgent):
 
     children_uct = [child.uct() for _, child in root.children.items()]
     best_action = list(root.children.keys())[np.argmax(children_uct)]
+    
+    # print(self.index)
+    # print(list(root.children.keys()))
+    # print(children_uct)
+    # print(best_action)
+    # print("===========")
     return best_action
   
   def selection(self, node):
@@ -139,7 +154,7 @@ class MCTSAgent(CaptureAgent):
     if untried_actions:
         action = random.choice(untried_actions)
         child_state = node.state.generateSuccessor(self.index, action)
-        child_node = MCTS_Node(self.index, child_state, parent=node, parent_action=action)
+        child_node = MCTS_Node(self.index, child_state, parent=node, parent_action=action, exploration_factor=self.exploration_factor)
         node.children[action] = child_node
         return child_node
 
@@ -258,6 +273,7 @@ class MyOffensiveAgent(MCTSAgent):
     enemies = [gameState.getAgentState(i) for i in self.getOpponents(gameState)]
     ghosts = [a for a in enemies if not a.isPacman and a.getPosition() is not None]
     myPos = successor.getAgentState(self.index).getPosition()
+    myState = successor.getAgentState(self.index)
     
     
     #return feature
@@ -322,6 +338,10 @@ class MyOffensiveAgent(MCTSAgent):
       numAvailable = len([a for a in successor.getLegalActions(self.index) if a != Directions.STOP])
       if minDistance_ghost <5 and numAvailable <=1:
         features['deadEnd'] = 1 #need to check sign
+    
+    # features['stop'] = 0
+    # if not myState.isPacman and action == Directions.STOP:
+    #     features['stop'] = 1
         
     return features
   
@@ -331,7 +351,8 @@ class MyOffensiveAgent(MCTSAgent):
             # 'capsuleExists': -100,
             'returnFood': -20,
             # 'crossBorder': 10,
-            'deadEnd': -1000
+            'deadEnd': -1000, 
+            # 'stop': -5
             }
   
   
