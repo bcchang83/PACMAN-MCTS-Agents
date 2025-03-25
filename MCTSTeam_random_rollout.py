@@ -82,9 +82,9 @@ class MCTSAgent(CaptureAgent):
   """
   def __init__(self, index, **kwargs):
       super().__init__(index)
-      self.iterations = int(kwargs.get("iterations", 100))
+      self.iterations = int(kwargs.get("iterations", 50))
       self.max_depth = int(kwargs.get("depth", 10))
-      self.exploration_factor = float(kwargs.get("exploration", 1.414))
+      self.exploration_factor = float(kwargs.get("exploration", 1))
         
       print(f"Agent {self.index}: iterations={self.iterations}, depth={self.max_depth}, exploration={self.exploration_factor}")
       
