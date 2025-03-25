@@ -167,6 +167,7 @@ class MyOffensiveAgent(DummyAgent):
     enemies = [gameState.getAgentState(i) for i in self.getOpponents(gameState)]
     ghosts = [a for a in enemies if not a.isPacman and a.getPosition() is not None]
     myPos = successor.getAgentState(self.index).getPosition()
+    myState = successor.getAgentState(self.index)
     
     
     #return feature
@@ -231,6 +232,10 @@ class MyOffensiveAgent(DummyAgent):
       numAvailable = len([a for a in successor.getLegalActions(self.index) if a != Directions.STOP])
       if minDistance_ghost <5 and numAvailable <=1:
         features['deadEnd'] = 1 #need to check sign
+    
+    # features['stop'] = 0
+    # if not myState.isPacman and action == Directions.STOP:
+    #     features['stop'] = 1
         
     return features
   
@@ -240,7 +245,8 @@ class MyOffensiveAgent(DummyAgent):
             # 'capsuleExists': -100,
             'returnFood': -20,
             # 'crossBorder': 10,
-            'deadEnd': -1000
+            'deadEnd': -1000,
+            # 'stop': -5
             }
   
   
